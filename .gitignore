@@ -1,0 +1,4 @@
+s3proxy.egg-info
+.ci.virtualenv
+build
+dist
