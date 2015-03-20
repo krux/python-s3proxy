@@ -85,13 +85,15 @@ class S3Proxy(object):
 
 
 def main():
+    def getenv(name, default):
+        return os.environ[name] if name in os.environ and len(os.environ[name]) > 0 else default
     S3Proxy(
         os.environ['S3_BUCKET'],
         os.environ['S3_PREFIX'],
-        os.environ.get('IAM_KEY', None),
-        os.environ.get('IAM_SECRET', None),
-        os.environ.get('BIND_HOST', '127.0.0.1'),
-        int(os.environ.get('BIND_PORT', 5000)),
+        getenv('IAM_KEY', None),
+        getenv('IAM_SECRET', None),
+        getenv('BIND_HOST', '127.0.0.1'),
+        int(getenv('BIND_PORT', 5000)),
     ).run()
 
 
