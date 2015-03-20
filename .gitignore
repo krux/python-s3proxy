@@ -1,4 +1,4 @@
 s3proxy.egg-info
-.ci.virtualenv
+.ci.*
 build
 dist

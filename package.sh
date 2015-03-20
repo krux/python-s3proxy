@@ -8,7 +8,7 @@ PACKAGE_NAME=${PACKAGE-'s3proxy'}
 DEST_DIR="/usr/local"
 
 ### set $PACKAGE_DIR
-PACKAGE_DIR="/krux/packages/${PACKAGE_NAME}"
+PACKAGE_DIR="/krux-${PACKAGE_NAME}"
 
 PIP_VERSION=1.4.1
 
@@ -16,13 +16,32 @@ PIP_VERSION=1.4.1
 VIRT=.ci.virtualenv
 TARGET=${VIRT}${PACKAGE_DIR}
 
+### install virtualenv-tools
+###
+### XXX This will do the appropriate magic rewrites of the headers within the
+###     the build virtualenv to that of the destination virtualenv.  It is NOT a
+###     run-time requirement or dependency.
+###
+if which virtualenv-tools; then
+    VENTOOLS="$(which virtualenv-tools)"
+else
+    ### install virtualenv-tools in its own virtualenv so we don't break it
+    ### while running it below
+    VENVTOOLS_VENV=".ci.virtualenv-tools"
+    virtualenv --no-site-packages "${VENVTOOLS_VENV}"
+    . "${VENVTOOLS_VENV}"/bin/activate
+    pip install virtualenv-tools
+    deactivate
+    VENVTOOLS="$(pwd)/${VENVTOOLS_VENV}"/bin/virtualenv-tools
+fi
+
 ### set up a virtualenv for this build and activate it
 virtualenv --no-site-packages ${TARGET}
 . ${TARGET}/bin/activate
 
 ### set up pip, install any requirements needed
-pip install $PIP_INDEXES pip==${PIP_VERSION}
-pip install $PIP_INDEXES -r requirements.pip
+pip install $PIP_OPTIONS pip==${PIP_VERSION}
+pip install $PIP_OPTIONS -r requirements.pip
 
 ### install the application into the virtualenv
 python setup.py install
@@ -39,25 +58,33 @@ VERSION=${VERSION-"$(python setup.py --version)-${BUILD_NUMBER}"}
 ### package version
 PACKAGE_VERSION=${VERSION-$( date -u +%Y%m%d%H%M )}
 
-### install virtualenv-tools
-###
-### XXX This will do the appropriate magic rewrites of the headers within the
-###     the build virtualenv to that of the destination virtualenv.  It is NOT a
-###     run-time requirement or dependency.
-###
-pip install virtualenv-tools
-
 ### clean and update the virtualenv environment 
 ###
 ### XXX This actually performs the magic rewrite which was installed above such
 ###     that the headers are that of the destination filesystem.
 ###
 cd ${TARGET}
-virtualenv-tools --update-path ${DEST_DIR}${PACKAGE_DIR}
+"${VENVTOOLS}" --update-path ${DEST_DIR}${PACKAGE_DIR}
 cd -
 
 ### delete *.pyc and *.pyo files
 find ${VIRT} -iname *.pyo -o -iname *.pyc -delete
+
+### link any entry points defined to /usr/local/bin
+mkdir -p ${VIRT}/bin
+cat <<EOF | python
+from ConfigParser import RawConfigParser
+import os
+rcp = RawConfigParser()
+rcp.read('s3proxy.egg-info/entry_points.txt')
+os.chdir('${VIRT}')
+for item in rcp.items('console_scripts'):
+    dest = '$(pwd)/${VIRT}/bin/' + item[0]
+    os.remove(dest)
+    os.symlink('..${PACKAGE_DIR}/bin/' + item[0], dest)
+EOF
+
+#ln -sf -t ${VIRT}/bin ..${PACKAGE_DIR}/bin/s3proxy
 
 ### create the package
 fpm --verbose -s dir -t deb -n ${PACKAGE_NAME} --prefix ${DEST_DIR} -v ${VERSION} -C ${VIRT} .
