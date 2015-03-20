@@ -19,11 +19,13 @@ if sys.version_info >= (2, 7, 9):
 
 
 class S3Proxy(object):
-    def __init__(self, bucket_name, path, key, secret):
+    def __init__(self, bucket_name, path, key, secret, host, port):
         self.bucket_name = bucket_name
         self.path = path
         self.key = key
         self.secret = secret
+        self.host = host
+        self.port = port
 
         logging.basicConfig(format='%(asctime)s: %(name)s/%(levelname)-9s: %(message)s', level=logging.INFO)
 
@@ -36,7 +38,10 @@ class S3Proxy(object):
         self.handle = self.app.route('/<path:path>')(self.handle)
 
     def run(self):
-        return self.app.run()
+        return self.app.run(
+            host=self.host,
+            port=self.port,
+        )
 
     def handle(self, path):
         self.app.logger.debug('Request for path %r', path)
@@ -85,6 +90,8 @@ def main():
         os.environ['S3_PREFIX'],
         os.environ.get('IAM_KEY', None),
         os.environ.get('IAM_SECRET', None),
+        os.environ.get('BIND_HOST', '127.0.0.1'),
+        int(os.environ.get('BIND_PORT', 5000)),
     ).run()
 
 
