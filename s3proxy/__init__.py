@@ -70,8 +70,6 @@ class S3Proxy(object):
                 return Response(generate(keys), mimetype='text/html')
 
             key = self.bucket.get_key(full_path)
-            #pipe = Pipe()
-            #key.get_contents_to_file(pipe)
             if key is None:
                 self.app.logger.warning('Key not found for path %r', path)
                 return ('404', 404)
