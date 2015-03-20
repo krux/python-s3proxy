@@ -82,7 +82,8 @@ for item in rcp.items('console_scripts'):
     src = '..${PACKAGE_DIR}/bin/' + item[0]
     dest = item[0]
     print 'symlinking ' + src + ' to ' + dest
-    os.remove(dest)
+    if os.path.exists(dest):
+        os.remove(dest)
     os.symlink(src, dest)
 EOF
 
