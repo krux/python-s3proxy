@@ -35,6 +35,7 @@ class S3Proxy(object):
         self.app = Flask(self.__class__.__name__)
         #self.app.debug = True
 
+        self.status = self.app.route('/__status')(self.status)
         self.handle = self.app.route('/<path:path>')(self.handle)
 
     def run(self):
@@ -42,6 +43,9 @@ class S3Proxy(object):
             host=self.host,
             port=self.port,
         )
+
+    def status(self):
+        return Response('{"status": "ok"}', mimetype='application/json')
 
     def handle(self, path):
         self.app.logger.debug('Request for path %r', path)
