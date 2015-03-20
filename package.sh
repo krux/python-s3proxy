@@ -77,11 +77,13 @@ from ConfigParser import RawConfigParser
 import os
 rcp = RawConfigParser()
 rcp.read('s3proxy.egg-info/entry_points.txt')
-os.chdir('${VIRT}')
+os.chdir('${VIRT}/bin')
 for item in rcp.items('console_scripts'):
+    src = '..${PACKAGE_DIR}/bin/' + item[0]
     dest = '$(pwd)/${VIRT}/bin/' + item[0]
+    print 'symlinking ' + src + ' to ' + dest
     os.remove(dest)
-    os.symlink('..${PACKAGE_DIR}/bin/' + item[0], dest)
+    os.symlink(src, dest)
 EOF
 
 #ln -sf -t ${VIRT}/bin ..${PACKAGE_DIR}/bin/s3proxy
