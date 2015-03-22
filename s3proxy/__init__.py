@@ -49,6 +49,7 @@ class S3Proxy(object):
 
     def handle(self, path):
         self.app.logger.debug('Request for path %r', path)
+        self.app.logger.debug('s3://%s/%s%s', self.bucket_name, self.path, path)
         try:
             full_path = self.path + path
             self.app.logger.debug('full_path %r', full_path)
@@ -61,22 +62,29 @@ class S3Proxy(object):
 
                 self.app.logger.debug('index.html not found, trying a manual listing')
                 keys = self.bucket.list(full_path, '/')
-                if not keys:
-                    self.app.logger.warning('listing of path failed %r', path)
+                keyiter = iter(keys)
+                try:
+                    key = keyiter.next()
+                except StopIteration:
+                    self.app.logger.warning('path has no keys %r', path)
                     return ('', 404)
 
                 self.app.logger.info('Generating index for path %r', path)
 
-                def generate(keys):
+                def generate(key, keys):
                     yield ('<html><head><title>Simple Index</title>'
                            '<meta name="api-version" value="2" /></head><body>\n')
-                    for key in keys:
-                        name = str(key.name)[len(full_path):]
-                        if name.endswith('/'):
-                            name = name[:-1]
-                        yield "<a href='%s'>%s</a><br/>\n" % (name, name)
+                    try:
+                        while True:
+                            name = str(key.name)[len(full_path):]
+                            if name.endswith('/'):
+                                name = name[:-1]
+                            yield "<a href='%s'>%s</a><br/>\n" % (name, name)
+                            key = keyiter.next()
+                    except StopIteration:
+                        pass
                     yield '</body></html>'
-                return Response(generate(keys), mimetype='text/html')
+                return Response(generate(key, keys), mimetype='text/html')
 
             key = self.bucket.get_key(full_path)
             if key is None:
