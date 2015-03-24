@@ -3,7 +3,7 @@ import os
 import sys
 
 import boto.s3.connection
-from flask import Flask, Response
+from flask import Flask, Response, redirect
 
 
 import ssl
@@ -27,7 +27,8 @@ class S3Proxy(object):
         self.host = host
         self.port = port
 
-        logging.basicConfig(format='%(asctime)s: %(name)s/%(levelname)-9s: %(message)s', level=logging.INFO)
+        logging.basicConfig(
+            format='%(asctime)s: %(name)s/%(levelname)-9s: %(message)s', level=logging.INFO)
 
         self.s3 = boto.s3.connection.S3Connection(self.key, self.secret)
         self.bucket = self.s3.get_bucket(self.bucket_name)
@@ -54,46 +55,63 @@ class S3Proxy(object):
             full_path = self.path + path
             self.app.logger.debug('full_path %r', full_path)
             if path.endswith('/'):
-                self.app.logger.debug('Path ends in /, checking for index.html')
-                key = self.bucket.get_key(full_path + 'index.html')
-                if key is not None:
-                    self.app.logger.info('Found index.html for %r', path)
-                    return Response(key, mimetype='text/html')
-
-                self.app.logger.debug('index.html not found, trying a manual listing')
-                keys = self.bucket.list(full_path, '/')
-                keyiter = iter(keys)
-                try:
-                    key = keyiter.next()
-                except StopIteration:
-                    self.app.logger.warning('path has no keys %r', path)
-                    return ('', 404)
-
-                self.app.logger.info('Generating index for path %r', path)
-
-                def generate(key, keys):
-                    yield ('<html><head><title>Simple Index</title>'
-                           '<meta name="api-version" value="2" /></head><body>\n')
-                    try:
-                        while True:
-                            name = str(key.name)[len(full_path):]
-                            if name.endswith('/'):
-                                name = name[:-1]
-                            yield "<a href='%s'>%s</a><br/>\n" % (name, name)
-                            key = keyiter.next()
-                    except StopIteration:
-                        pass
-                    yield '</body></html>'
-                return Response(generate(key, keys), mimetype='text/html')
+                return self.handle_directory(path)
 
             key = self.bucket.get_key(full_path)
             if key is None:
-                self.app.logger.warning('Key not found for path %r', path)
-                return ('404', 404)
+                # If we can't find a file, try it as a directory
+                ### Note: Some versions of pip will make some requests for what
+                ### should be directories without the trailing slash.
+                keys = self.bucket.list(full_path + '/', '/')
+                try:
+                    iter(keys).next()
+                    # there are keys to list, so send back a redirect so the client
+                    # knows it should be treating this as a directory.
+                    self.app.logger.warning(
+                        'path does not end in / but is a directory, redirecting %r', path)
+                    return redirect(path + '/')
+                except StopIteration:
+                    self.app.logger.warning('Key not found for path and not a directory %r', path)
+                    return ('', 404)
+
             self.app.logger.info('Found key for path %r', path)
             return Response(key, mimetype='application/octet-stream')
         except Exception, e:
             return (str(e), 404)
+
+    def handle_directory(self, path):
+        full_path = self.path + path
+        self.app.logger.debug('Path ends in /, checking for index.html')
+        key = self.bucket.get_key(full_path + 'index.html')
+        if key is not None:
+            self.app.logger.info('Found index.html for %r', path)
+            return Response(key, mimetype='text/html')
+
+        self.app.logger.debug('index.html not found, trying a manual listing')
+        keys = self.bucket.list(full_path, '/')
+        keyiter = iter(keys)
+        try:
+            key = keyiter.next()
+        except StopIteration:
+            self.app.logger.warning('path has no keys %r', path)
+            return ('', 404)
+
+        self.app.logger.info('Generating index for path %r', path)
+
+        def generate(key, keys):
+            yield ('<html><head><title>Simple Index</title>'
+                   '<meta name="api-version" value="2" /></head><body>\n')
+            try:
+                while True:
+                    name = str(key.name)[len(full_path):]
+                    if name.endswith('/'):
+                        name = name[:-1]
+                    yield "<a href='%s'>%s</a><br/>\n" % (name, name)
+                    key = keyiter.next()
+            except StopIteration:
+                pass
+            yield '</body></html>'
+        return Response(generate(key, keys), mimetype='text/html')
 
 
 def main():
