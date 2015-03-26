@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -ex
 
+PYTHON_PACKAGE_NAME="$(python setup.py --name)"
+
 ### name of the package, project, etc
-PACKAGE_NAME=${PACKAGE-'s3proxy'}
+DEFAULT_PACKAGE_NAME="python-${PYTHON_PACKAGE_NAME}"
+PACKAGE_NAME="${PACKAGE-$DEFAULT_PACKAGE_NAME}"
 
 ### set $DEST_DIR
 DEST_DIR="/usr/local"
@@ -13,8 +16,8 @@ PACKAGE_DIR="/krux-${PACKAGE_NAME}"
 PIP_VERSION=1.4.1
 
 ### set $TARGET
-VIRT=.ci.virtualenv
-TARGET=${VIRT}${PACKAGE_DIR}
+BUILD_DIR=.build
+TARGET=${BUILD_DIR}${PACKAGE_DIR}
 
 ### install virtualenv-tools
 ###
@@ -22,12 +25,13 @@ TARGET=${VIRT}${PACKAGE_DIR}
 ###     the build virtualenv to that of the destination virtualenv.  It is NOT a
 ###     run-time requirement or dependency.
 ###
+### XXX 
 if which virtualenv-tools; then
     VENTOOLS="$(which virtualenv-tools)"
 else
     ### install virtualenv-tools in its own virtualenv so we don't break it
     ### while running it below
-    VENVTOOLS_VENV=".ci.virtualenv-tools"
+    VENVTOOLS_VENV=".tools"
     virtualenv --no-site-packages "${VENVTOOLS_VENV}"
     . "${VENVTOOLS_VENV}"/bin/activate
     pip install virtualenv-tools
@@ -53,10 +57,8 @@ python setup.py install
 BUILD_NUMBER=${BUILD_NUMBER-'development'}
 
 ### set $VERSION
-VERSION=${VERSION-"$(python setup.py --version)-${BUILD_NUMBER}"}
-
-### package version
-PACKAGE_VERSION=${VERSION-$( date -u +%Y%m%d%H%M )}
+DEFAULT_VERSION="$(python setup.py --version)-${BUILD_NUMBER}"
+VERSION="${VERSION-${DEFAULT_VERSION}}"
 
 ### clean and update the virtualenv environment 
 ###
@@ -68,16 +70,24 @@ cd ${TARGET}
 cd -
 
 ### delete *.pyc and *.pyo files
-find ${VIRT} -iname *.pyo -o -iname *.pyc -delete
+find ${BUILD_DIR} -iname *.pyo -o -iname *.pyc -delete
 
 ### link any entry points defined to /usr/local/bin
-mkdir -p ${VIRT}/bin
+mkdir -p ${BUILD_DIR}/bin
 cat <<EOF | python
 from ConfigParser import RawConfigParser
 import os
+import sys
+
 rcp = RawConfigParser()
-rcp.read('s3proxy.egg-info/entry_points.txt')
-os.chdir('${VIRT}/bin')
+egg = '${PYTHON_PACKAGE_NAME}.egg-info'
+entry_points = os.path.join(egg, 'entry_points.txt')
+if not os.path.exists(egg) or not os.path.exists(entry_points):
+    sys.exit(0)
+rcp.read(entry_points)
+if 'console_scripts' not in rcp.sections():
+    sys.exit(0)
+os.chdir('${BUILD_DIR}/bin')
 for item in rcp.items('console_scripts'):
     src = '..${PACKAGE_DIR}/bin/' + item[0]
     dest = item[0]
@@ -88,4 +98,4 @@ for item in rcp.items('console_scripts'):
 EOF
 
 ### create the package
-fpm --verbose -s dir -t deb -n ${PACKAGE_NAME} --prefix ${DEST_DIR} -v ${VERSION} -C ${VIRT} .
+fpm --verbose -s dir -t deb -n ${PACKAGE_NAME} --prefix ${DEST_DIR} -v ${VERSION} -C ${BUILD_DIR} .
