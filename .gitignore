@@ -2,3 +2,5 @@ s3proxy.egg-info
 .ci.*
 build
 dist
+.build
+.tools
