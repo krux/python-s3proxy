@@ -33,7 +33,7 @@ else
     ### while running it below
     VENVTOOLS_VENV=".tools"
     virtualenv --no-site-packages "${VENVTOOLS_VENV}"
-    . "${VENVTOOLS_VENV}"/bin/activate
+    source "${VENVTOOLS_VENV}"/bin/activate
     pip install virtualenv-tools
     deactivate
     VENVTOOLS="$(pwd)/${VENVTOOLS_VENV}"/bin/virtualenv-tools
@@ -41,7 +41,7 @@ fi
 
 ### set up a virtualenv for this build and activate it
 virtualenv --no-site-packages ${TARGET}
-. ${TARGET}/bin/activate
+source ${TARGET}/bin/activate
 
 ### set up pip, install any requirements needed
 pip install $PIP_OPTIONS pip==${PIP_VERSION}
