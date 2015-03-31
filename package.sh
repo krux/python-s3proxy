@@ -2,20 +2,14 @@
 set -ex
 
 PYTHON_PACKAGE_NAME="$(python setup.py --name)"
-
-### name of the package, project, etc
 DEFAULT_PACKAGE_NAME="python-${PYTHON_PACKAGE_NAME}"
 PACKAGE_NAME="${PACKAGE-$DEFAULT_PACKAGE_NAME}"
 
-### set $DEST_DIR
 DEST_DIR="/usr/local"
-
-### set $PACKAGE_DIR
 PACKAGE_DIR="/krux-${PACKAGE_NAME}"
 
 PIP_VERSION=1.4.1
 
-### set $TARGET
 BUILD_DIR=.build
 TARGET=${BUILD_DIR}${PACKAGE_DIR}
 
@@ -53,17 +47,15 @@ python setup.py install
 ### XXX test the application
 #nosetests
 
-### set $BUILD_NUMBER
 BUILD_NUMBER=${BUILD_NUMBER-'development'}
 
-### set $VERSION
 DEFAULT_VERSION="$(python setup.py --version)-${BUILD_NUMBER}"
 VERSION="${VERSION-${DEFAULT_VERSION}}"
 
 ### clean and update the virtualenv environment 
 ###
-### XXX This actually performs the magic rewrite which was installed above such
-###     that the headers are that of the destination filesystem.
+### XXX This does the magic needed to make the virtualenv work
+### from $DEST_DIR, which is where the package will install it.
 ###
 cd ${TARGET}
 "${VENVTOOLS}" --update-path ${DEST_DIR}${PACKAGE_DIR}
