@@ -27,19 +27,19 @@ else
     # while running it below
     VENVTOOLS_VENV=".tools"
     virtualenv --no-site-packages "${VENVTOOLS_VENV}"
-    source "${VENVTOOLS_VENV}"/bin/activate
+    source "${VENVTOOLS_VENV}/bin/activate"
     pip install virtualenv-tools
     deactivate
-    VENVTOOLS="$(pwd)/${VENVTOOLS_VENV}"/bin/virtualenv-tools
+    VENVTOOLS="$(pwd)/${VENVTOOLS_VENV}/bin/virtualenv-tools"
 fi
 
 # set up a virtualenv for this build and activate it
-virtualenv --no-site-packages ${TARGET}
-source ${TARGET}/bin/activate
+virtualenv --no-site-packages "${TARGET}"
+source "${TARGET}/bin/activate"
 
 # set up pip, install any requirements needed
-pip install $PIP_OPTIONS pip==${PIP_VERSION}
-pip install $PIP_OPTIONS -r requirements.pip
+pip install $PIP_OPTIONS "pip==${PIP_VERSION}"
+pip install $PIP_OPTIONS -r requirements.pip -I
 
 # install the application into the virtualenv
 python setup.py install
@@ -47,7 +47,7 @@ python setup.py install
 # XXX test the application
 #nosetests
 
-BUILD_NUMBER=${BUILD_NUMBER-'development'}
+BUILD_NUMBER="${BUILD_NUMBER-'development'}"
 
 DEFAULT_VERSION="$(python setup.py --version)-${BUILD_NUMBER}"
 VERSION="${VERSION-${DEFAULT_VERSION}}"
@@ -57,15 +57,15 @@ VERSION="${VERSION-${DEFAULT_VERSION}}"
 # XXX This does the magic needed to make the virtualenv work
 # from $DEST_DIR, which is where the package will install it.
 #
-cd ${TARGET}
-"${VENVTOOLS}" --update-path ${DEST_DIR}${PACKAGE_DIR}
+cd "${TARGET}"
+"${VENVTOOLS}" --update-path "${DEST_DIR}${PACKAGE_DIR}"
 cd -
 
 # delete *.pyc and *.pyo files
-find ${BUILD_DIR} -iname *.pyo -o -iname *.pyc -delete
+find "${BUILD_DIR}" -iname *.pyo -o -iname *.pyc -delete
 
 # link any entry points defined to /usr/local/bin
-mkdir -p ${BUILD_DIR}/bin
+mkdir -p "${BUILD_DIR}/bin"
 cat <<EOF | python
 from ConfigParser import RawConfigParser
 import os
@@ -90,4 +90,4 @@ for item in rcp.items('console_scripts'):
 EOF
 
 # create the package
-fpm --verbose -s dir -t deb -n ${PACKAGE_NAME} --prefix ${DEST_DIR} -v ${VERSION} -C ${BUILD_DIR} .
+fpm --verbose -s dir -t deb -n "${PACKAGE_NAME}" --prefix "${DEST_DIR}" -v "${VERSION}" -C "${BUILD_DIR}" .
