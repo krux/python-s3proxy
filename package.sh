@@ -8,23 +8,23 @@ PACKAGE_NAME="${PACKAGE-$DEFAULT_PACKAGE_NAME}"
 DEST_DIR="/usr/local"
 PACKAGE_DIR="/krux-${PACKAGE_NAME}"
 
-PIP_VERSION=1.4.1
+PIP_VERSION="1.4.1"
 
-BUILD_DIR=.build
-TARGET=${BUILD_DIR}${PACKAGE_DIR}
+BUILD_DIR=".build"
+TARGET="${BUILD_DIR}${PACKAGE_DIR}"
 
-### install virtualenv-tools
-###
-### XXX This will do the appropriate magic rewrites of the headers within the
-###     the build virtualenv to that of the destination virtualenv.  It is NOT a
-###     run-time requirement or dependency.
-###
-### XXX 
+# install virtualenv-tools
+#
+# XXX This will do the appropriate magic rewrites of the headers within the
+#     the build virtualenv to that of the destination virtualenv.  It is NOT a
+#     run-time requirement or dependency.
+#
+# XXX use the system installed virtualenv-tools if it exists
 if which virtualenv-tools; then
     VENTOOLS="$(which virtualenv-tools)"
 else
-    ### install virtualenv-tools in its own virtualenv so we don't break it
-    ### while running it below
+    # install virtualenv-tools in its own virtualenv so we don't break it
+    # while running it below
     VENVTOOLS_VENV=".tools"
     virtualenv --no-site-packages "${VENVTOOLS_VENV}"
     source "${VENVTOOLS_VENV}"/bin/activate
@@ -33,18 +33,18 @@ else
     VENVTOOLS="$(pwd)/${VENVTOOLS_VENV}"/bin/virtualenv-tools
 fi
 
-### set up a virtualenv for this build and activate it
+# set up a virtualenv for this build and activate it
 virtualenv --no-site-packages ${TARGET}
 source ${TARGET}/bin/activate
 
-### set up pip, install any requirements needed
+# set up pip, install any requirements needed
 pip install $PIP_OPTIONS pip==${PIP_VERSION}
 pip install $PIP_OPTIONS -r requirements.pip
 
-### install the application into the virtualenv
+# install the application into the virtualenv
 python setup.py install
 
-### XXX test the application
+# XXX test the application
 #nosetests
 
 BUILD_NUMBER=${BUILD_NUMBER-'development'}
@@ -52,19 +52,19 @@ BUILD_NUMBER=${BUILD_NUMBER-'development'}
 DEFAULT_VERSION="$(python setup.py --version)-${BUILD_NUMBER}"
 VERSION="${VERSION-${DEFAULT_VERSION}}"
 
-### clean and update the virtualenv environment 
-###
-### XXX This does the magic needed to make the virtualenv work
-### from $DEST_DIR, which is where the package will install it.
-###
+# clean and update the virtualenv environment 
+#
+# XXX This does the magic needed to make the virtualenv work
+# from $DEST_DIR, which is where the package will install it.
+#
 cd ${TARGET}
 "${VENVTOOLS}" --update-path ${DEST_DIR}${PACKAGE_DIR}
 cd -
 
-### delete *.pyc and *.pyo files
+# delete *.pyc and *.pyo files
 find ${BUILD_DIR} -iname *.pyo -o -iname *.pyc -delete
 
-### link any entry points defined to /usr/local/bin
+# link any entry points defined to /usr/local/bin
 mkdir -p ${BUILD_DIR}/bin
 cat <<EOF | python
 from ConfigParser import RawConfigParser
@@ -89,5 +89,5 @@ for item in rcp.items('console_scripts'):
     os.symlink(src, dest)
 EOF
 
-### create the package
+# create the package
 fpm --verbose -s dir -t deb -n ${PACKAGE_NAME} --prefix ${DEST_DIR} -v ${VERSION} -C ${BUILD_DIR} .
