@@ -13,6 +13,10 @@ PIP_VERSION="1.4.1"
 BUILD_DIR=".build"
 TARGET="${BUILD_DIR}${PACKAGE_DIR}"
 
+if [ -e "${BUILD_DIR}" ]; then
+    rm -rf "${BUILD_DIR}"
+fi
+
 # install virtualenv-tools
 #
 # XXX This will do the appropriate magic rewrites of the headers within the
@@ -26,11 +30,13 @@ else
     # install virtualenv-tools in its own virtualenv so we don't break it
     # while running it below
     VENVTOOLS_VENV=".tools"
-    virtualenv --no-site-packages "${VENVTOOLS_VENV}"
-    source "${VENVTOOLS_VENV}/bin/activate"
-    pip install virtualenv-tools
-    deactivate
     VENVTOOLS="$(pwd)/${VENVTOOLS_VENV}/bin/virtualenv-tools"
+    if [ ! -e "${VENVTOOLS}" ]; then
+        virtualenv --no-site-packages "${VENVTOOLS_VENV}"
+        source "${VENVTOOLS_VENV}/bin/activate"
+        pip install virtualenv-tools
+        deactivate
+    fi
 fi
 
 # set up a virtualenv for this build and activate it
