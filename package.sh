@@ -32,6 +32,9 @@ else
     VENVTOOLS_VENV=".tools"
     VENVTOOLS="$(pwd)/${VENVTOOLS_VENV}/bin/virtualenv-tools"
     if [ ! -e "${VENVTOOLS}" ]; then
+        if [ -e "${VENVTOOLS_VENV}" ]; then
+            rm -rf "${VENVTOOLS_VENV}"
+        fi
         virtualenv --no-site-packages "${VENVTOOLS_VENV}"
         source "${VENVTOOLS_VENV}/bin/activate"
         pip install virtualenv-tools
