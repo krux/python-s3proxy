@@ -56,7 +56,7 @@ python setup.py install
 # XXX test the application
 #nosetests
 
-BUILD_NUMBER="${BUILD_NUMBER-'development'}"
+BUILD_NUMBER="${BUILD_NUMBER-development}"
 
 DEFAULT_VERSION="$(python setup.py --version)-${BUILD_NUMBER}"
 VERSION="${VERSION-${DEFAULT_VERSION}}"
