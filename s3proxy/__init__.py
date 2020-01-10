@@ -2,6 +2,8 @@ import logging
 import os
 import sys
 
+# Note, this is old-style boto -- not worth updating to boto3 because
+#  this will be retired upon implementation of Artifactory for pip installs
 import boto.s3.connection
 from flask import Flask, Response, redirect
 
@@ -64,7 +66,7 @@ class S3Proxy(object):
                 ### should be directories without the trailing slash.
                 keys = self.bucket.list(full_path + '/', '/')
                 try:
-                    iter(keys).next()
+                    next(iter(keys))
                     # there are keys to list, so send back a redirect so the client
                     # knows it should be treating this as a directory.
                     self.app.logger.warning(
@@ -76,7 +78,7 @@ class S3Proxy(object):
 
             self.app.logger.info('Found key for path %r', path)
             return Response(key, mimetype='application/octet-stream')
-        except Exception, e:
+        except Exception as e:
             return (str(e), 404)
 
     def handle_directory(self, path):
@@ -91,7 +93,7 @@ class S3Proxy(object):
         keys = self.bucket.list(full_path, '/')
         keyiter = iter(keys)
         try:
-            key = keyiter.next()
+            key = next(keyiter)
         except StopIteration:
             self.app.logger.warning('path has no keys %r', path)
             return ('', 404)
@@ -107,7 +109,7 @@ class S3Proxy(object):
                     if name.endswith('/'):
                         name = name[:-1]
                     yield "<a href='%s'>%s</a><br/>\n" % (name, name)
-                    key = keyiter.next()
+                    key = next(keyiter)
             except StopIteration:
                 pass
             yield '</body></html>'
