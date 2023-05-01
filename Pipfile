@@ -5,4 +5,4 @@ name = "pypi"
 
 [packages]
 boto = "==2.49.0"
-Flask = "==1.1.1"
+Flask = "==2.3.2"
